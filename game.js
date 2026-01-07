@@ -10,7 +10,8 @@ const gameState = {
     currentRound: 1,
     currentTurn: 0,
     myCards: [],
-    roundType: '' // 'kings', 'queens', 'aces'
+    roundType: '', // 'kings', 'queens', 'aces'
+    lastRouletteTimestamp: 0
 };
 
 // ===== DOM ELEMENTS =====
@@ -431,6 +432,7 @@ function startGameplay(roomData) {
     gameState.myCards = gameData.hands[gameState.playerId] || [];
     gameState.roundType = gameData.roundType;
     gameState.currentRound = gameData.round;
+    gameState.lastRouletteTimestamp = Date.now(); // Ignore any stale events from previous games
 
     renderPlayerSeats();
     renderMyCards();
@@ -613,6 +615,11 @@ function claimCard(card, cardIndex) {
         timestamp: Date.now()
     };
 
+    // Clean up any stale roulette event before making a new claim
+    if (gameState.isHost) {
+        db.ref('rooms/' + gameState.roomCode + '/gameState/lastRoulette').remove();
+    }
+
     db.ref().update(updates).then(() => {
         // If hand empty, redeal
         if (updatedCards.length === 0) {
@@ -709,10 +716,11 @@ function showRouletteModal(playerName, survived, targetId) {
             if (gun) gun.classList.remove('shoot');
 
             if (gameState.isHost) {
-                checkWinCondition();
-                nextTurn();
-                // Clear the event
-                db.ref('rooms/' + gameState.roomCode + '/gameState/lastRoulette').remove();
+                // Clear the event FIRST before triggering next turn
+                db.ref('rooms/' + gameState.roomCode + '/gameState/lastRoulette').remove().then(() => {
+                    checkWinCondition();
+                    nextTurn();
+                });
             }
         }, 3000);
     }, 2000);
