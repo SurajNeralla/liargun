@@ -538,6 +538,12 @@ function updateGameState(gameData) {
     const playerOrder = gameData.playerOrder;
     const currentPlayerId = playerOrder[gameData.currentTurn];
 
+    // Refresh my cards from Firebase data
+    if (gameData.hands && gameData.hands[gameState.playerId]) {
+        gameState.myCards = gameData.hands[gameState.playerId];
+        renderMyCards();
+    }
+
     document.querySelectorAll('.player-seat').forEach(seat => {
         seat.classList.remove('active');
     });
