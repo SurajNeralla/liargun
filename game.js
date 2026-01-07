@@ -487,7 +487,7 @@ function renderMyCards() {
         cardEl.appendChild(suit);
 
         // Add click handler to card
-        cardEl.addEventListener('click', () => handleCardClick(card, cardEl));
+        cardEl.addEventListener('click', () => handleCardClick(card, index));
 
         elements.cardsContainer.appendChild(cardEl);
     });
@@ -495,7 +495,7 @@ function renderMyCards() {
     playSound(elements.audioCardFlip);
 }
 
-function handleCardClick(card, cardElement) {
+function handleCardClick(card, cardIndex) {
     db.ref('rooms/' + gameState.roomCode + '/gameState').once('value').then(snapshot => {
         const gameData = snapshot.val();
         if (!gameData) return;
@@ -516,7 +516,7 @@ function handleCardClick(card, cardElement) {
 
         // If no claim and it's my turn, claim the card
         if (!hasClaim && isMyTurn) {
-            claimCard();
+            claimCard(card, cardIndex);
             return;
         }
 
@@ -587,19 +587,42 @@ function updateTurnIndicator(gameData) {
     }
 }
 
-function claimCard() {
+function claimCard(card, cardIndex) {
     playSound(elements.audioButtonClick);
 
-    const hasRequiredCard = gameState.myCards.some(card => card.rank === gameState.roundType || card.isJoker);
+    // Check IF THE SPECIFIC CARD is the required one
+    const isTruth = card.rank === gameState.roundType || card.isJoker;
 
-    db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').set({
+    // Remove card from player's hand in Firebase
+    const updatedCards = [...gameState.myCards];
+    updatedCards.splice(cardIndex, 1);
+
+    const updates = {};
+    updates['rooms/' + gameState.roomCode + '/gameState/hands/' + gameState.playerId] = updatedCards;
+    updates['rooms/' + gameState.roomCode + '/gameState/lastClaim'] = {
         playerId: gameState.playerId,
         playerName: gameState.playerName,
-        hasCard: hasRequiredCard,
+        hasCard: isTruth,
         timestamp: Date.now()
-    }).then(() => {
+    };
+
+    db.ref().update(updates).then(() => {
+        // If hand empty, redeal
+        if (updatedCards.length === 0) {
+            redealHand(gameState.playerId);
+        }
         nextTurn();
     });
+}
+
+function redealHand(playerId) {
+    const deck = shuffleDeck(createDeck());
+    const newHand = [];
+    for (let i = 0; i < 5; i++) {
+        newHand.push(deck[i]);
+    }
+    db.ref('rooms/' + gameState.roomCode + '/gameState/hands/' + playerId).set(newHand);
+    showNotification('New hand dealt!');
 }
 
 function callBluff() {
@@ -613,13 +636,20 @@ function callBluff() {
         db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').remove();
 
         const wasBluffing = !claim.hasCard;
-        const blufferId = claim.playerId;
+        const clamerId = claim.playerId;
+        const callerId = gameState.playerId;
+        const callerName = gameState.playerName;
 
-        showRouletteModal(claim.playerName, wasBluffing, blufferId);
+        // IF clamer was bluffing, clamer shoots.
+        // IF clamer was telling truth, caller (me) shoots.
+        const targetId = wasBluffing ? clamerId : callerId;
+        const targetName = wasBluffing ? claim.playerName : callerName;
+
+        showRouletteModal(targetName, wasBluffing, targetId);
     });
 }
 
-function showRouletteModal(playerName, wasBluffing, playerId) {
+function showRouletteModal(playerName, wasBluffing, targetId) {
     elements.roulettePlayerName.textContent = playerName;
     elements.rouletteResult.classList.add('hidden');
     elements.rouletteModal.classList.add('active');
@@ -648,7 +678,7 @@ function showRouletteModal(playerName, wasBluffing, playerId) {
             elements.rouletteResult.textContent = '💀 BANG! Eliminated!';
             elements.rouletteResult.className = 'roulette-result eliminated';
 
-            db.ref('rooms/' + gameState.roomCode + '/gameState/eliminated/' + playerId).set(true);
+            db.ref('rooms/' + gameState.roomCode + '/gameState/eliminated/' + targetId).set(true);
         }
 
         elements.rouletteResult.classList.remove('hidden');
