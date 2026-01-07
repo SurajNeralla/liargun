@@ -496,7 +496,6 @@ function renderMyCards() {
 }
 
 function handleCardClick(card, cardElement) {
-    // Check if it's the player's turn
     db.ref('rooms/' + gameState.roomCode + '/gameState').once('value').then(snapshot => {
         const gameData = snapshot.val();
         if (!gameData) return;
@@ -504,18 +503,26 @@ function handleCardClick(card, cardElement) {
         const currentPlayerId = gameData.playerOrder[gameData.currentTurn];
         const isMyTurn = currentPlayerId === gameState.playerId;
         const isEliminated = gameData.eliminated && gameData.eliminated[gameState.playerId];
+        const hasClaim = !!gameData.lastClaim;
+        const isMyClaim = hasClaim && gameData.lastClaim.playerId === gameState.playerId;
 
-        if (!isMyTurn || isEliminated) {
-            showNotification('Wait for your turn!');
+        if (isEliminated) return;
+
+        // If there's an active claim that isn't mine, any card click calls bluff
+        if (hasClaim && !isMyClaim) {
+            callBluff();
             return;
         }
 
-        // If there's a previous claim, clicking any card calls bluff
-        if (gameData.lastClaim) {
-            callBluff();
-        } else {
-            // Otherwise, clicking a card claims you have it
+        // If no claim and it's my turn, claim the card
+        if (!hasClaim && isMyTurn) {
             claimCard();
+            return;
+        }
+
+        // Otherwise, show turn notification
+        if (!isMyTurn) {
+            showNotification('Wait for your turn!');
         }
     });
 }
@@ -552,17 +559,14 @@ function updateGameState(gameData) {
 
     const isMyTurn = currentPlayerId === gameState.playerId;
     const isEliminated = gameData.eliminated && gameData.eliminated[gameState.playerId];
+    const hasClaim = !!gameData.lastClaim;
+    const isMyClaim = hasClaim && gameData.lastClaim.playerId === gameState.playerId;
 
-    if (isMyTurn && !isEliminated) {
-        if (gameData.lastClaim) {
-            elements.gameActions.classList.remove('hidden');
-            elements.claimCardBtn.classList.add('hidden');
-            elements.callBluffBtn.classList.remove('hidden');
-        } else {
-            elements.gameActions.classList.remove('hidden');
-            elements.claimCardBtn.classList.remove('hidden');
-            elements.callBluffBtn.classList.add('hidden');
-        }
+    // Show "Call Bluff" button to everyone except the person who made the claim
+    if (hasClaim && !isMyClaim && !isEliminated) {
+        elements.gameActions.classList.remove('hidden');
+        elements.claimCardBtn.classList.add('hidden');
+        elements.callBluffBtn.classList.remove('hidden');
     } else {
         elements.gameActions.classList.add('hidden');
     }
@@ -604,6 +608,9 @@ function callBluff() {
     db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').once('value').then(snapshot => {
         const claim = snapshot.val();
         if (!claim) return;
+
+        // Clear claim immediately to prevent others from calling it
+        db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').remove();
 
         const wasBluffing = !claim.hasCard;
         const blufferId = claim.playerId;

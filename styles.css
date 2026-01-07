@@ -810,8 +810,23 @@ input[type="text"]::placeholder {
 
 /* ===== GAME ACTIONS ===== */
 .game-actions {
+    position: fixed;
+    bottom: 160px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    gap: var(--spacing-md);
+    transition: all var(--transition-normal);
+}
+
+.game-actions.hidden {
+    display: none;
+}
+
+#claim-card-btn {
     display: none !important;
-    /* Hide action buttons - cards are clickable now */
+    /* Hide this button as we use card clicks */
 }
 
 /* ===== TURN INDICATOR ===== */
