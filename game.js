@@ -333,6 +333,13 @@ function listenToRoom() {
 
         if (roomData.gameState) {
             updateGameState(roomData.gameState);
+
+            // Listen for roulette events
+            if (roomData.gameState.lastRoulette && (!gameState.lastRouletteTimestamp || roomData.gameState.lastRoulette.timestamp > gameState.lastRouletteTimestamp)) {
+                gameState.lastRouletteTimestamp = roomData.gameState.lastRoulette.timestamp;
+                const { targetName, survived, targetId } = roomData.gameState.lastRoulette;
+                showRouletteModal(targetName, survived, targetId);
+            }
         }
     });
 }
@@ -626,11 +633,12 @@ function redealHand(playerId) {
 }
 
 function callBluff() {
-    playSound(elements.audioBluffCall);
-
+    // Only proceed if there is a claim to challenge
     db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').once('value').then(snapshot => {
+        if (!snapshot.exists()) return;
+
+        playSound(elements.audioBluffCall);
         const claim = snapshot.val();
-        if (!claim) return;
 
         // Clear claim immediately to prevent others from calling it
         db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').remove();
@@ -640,23 +648,33 @@ function callBluff() {
         const callerId = gameState.playerId;
         const callerName = gameState.playerName;
 
-        // IF clamer was bluffing, clamer shoots.
-        // IF clamer was telling truth, caller (me) shoots.
+        // Determine target
         const targetId = wasBluffing ? clamerId : callerId;
         const targetName = wasBluffing ? claim.playerName : callerName;
 
-        showRouletteModal(targetName, wasBluffing, targetId);
+        // Calculate and broadcast result
+        const survived = Math.random() > (1 / 6);
+
+        db.ref('rooms/' + gameState.roomCode + '/gameState/lastRoulette').set({
+            targetId,
+            targetName,
+            survived,
+            timestamp: Date.now()
+        });
     });
 }
 
-function showRouletteModal(playerName, wasBluffing, targetId) {
+function showRouletteModal(playerName, survived, targetId) {
     elements.roulettePlayerName.textContent = playerName;
     elements.rouletteResult.classList.add('hidden');
     elements.rouletteModal.classList.add('active');
 
-    setTimeout(() => {
-        const survived = Math.random() > (1 / 6);
+    // Reset animations
+    const gun = elements.gunContainer.querySelector('.gun');
+    if (gun) gun.classList.remove('shoot');
+    elements.gunContainer.classList.remove('flash');
 
+    setTimeout(() => {
         if (survived) {
             playSound(elements.audioGunClick);
             elements.rouletteResult.textContent = '💨 Click! Survived!';
@@ -665,7 +683,6 @@ function showRouletteModal(playerName, wasBluffing, targetId) {
             playSound(elements.audioGunShot);
 
             // Add gun shoot animation
-            const gun = elements.gunContainer.querySelector('.gun');
             if (gun) gun.classList.add('shoot');
 
             // Add muzzle flash
@@ -678,7 +695,10 @@ function showRouletteModal(playerName, wasBluffing, targetId) {
             elements.rouletteResult.textContent = '💀 BANG! Eliminated!';
             elements.rouletteResult.className = 'roulette-result eliminated';
 
-            db.ref('rooms/' + gameState.roomCode + '/gameState/eliminated/' + targetId).set(true);
+            // Targeted player or host updates elimination
+            if (gameState.isHost) {
+                db.ref('rooms/' + gameState.roomCode + '/gameState/eliminated/' + targetId).set(true);
+            }
         }
 
         elements.rouletteResult.classList.remove('hidden');
@@ -686,11 +706,14 @@ function showRouletteModal(playerName, wasBluffing, targetId) {
         setTimeout(() => {
             elements.rouletteModal.classList.remove('active');
             elements.gunContainer.classList.remove('flash');
+            if (gun) gun.classList.remove('shoot');
 
-            checkWinCondition();
-
-            db.ref('rooms/' + gameState.roomCode + '/gameState/lastClaim').remove();
-            nextTurn();
+            if (gameState.isHost) {
+                checkWinCondition();
+                nextTurn();
+                // Clear the event
+                db.ref('rooms/' + gameState.roomCode + '/gameState/lastRoulette').remove();
+            }
         }, 3000);
     }, 2000);
 }
