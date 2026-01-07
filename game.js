@@ -43,6 +43,7 @@ const elements = {
     callBluffBtn: document.getElementById('call-bluff-btn'),
     turnIndicator: document.getElementById('turn-indicator'),
     turnText: document.getElementById('turn-text'),
+    tableSurface: document.querySelector('.poker-table'),
 
     // Modals
     rouletteModal: document.getElementById('roulette-modal'),
@@ -512,26 +513,15 @@ function handleCardClick(card, cardIndex) {
         const currentPlayerId = gameData.playerOrder[gameData.currentTurn];
         const isMyTurn = currentPlayerId === gameState.playerId;
         const isEliminated = gameData.eliminated && gameData.eliminated[gameState.playerId];
-        const hasClaim = !!gameData.lastClaim;
-        const isMyClaim = hasClaim && gameData.lastClaim.playerId === gameState.playerId;
 
         if (isEliminated) return;
 
-        // If there's an active claim that isn't mine, any card click calls bluff
-        if (hasClaim && !isMyClaim) {
-            callBluff();
-            return;
-        }
-
-        // If no claim and it's my turn, claim the card
-        if (!hasClaim && isMyTurn) {
+        // CARD CLICK ALWAYS CLAIMS (if it's your turn)
+        if (isMyTurn) {
             claimCard(card, cardIndex);
             return;
-        }
-
-        // Otherwise, show turn notification
-        if (!isMyTurn) {
-            showNotification('Wait for your turn!');
+        } else {
+            showNotification('Wait for your turn to play!');
         }
     });
 }
@@ -774,6 +764,13 @@ elements.leaveRoomBtn.addEventListener('click', leaveRoom);
 elements.startGameBtn.addEventListener('click', startGame);
 elements.claimCardBtn.addEventListener('click', claimCard);
 elements.callBluffBtn.addEventListener('click', callBluff);
+
+// Add table surface click to call bluff
+if (elements.tableSurface) {
+    elements.tableSurface.addEventListener('click', () => {
+        callBluff();
+    });
+}
 elements.backToLobbyBtn.addEventListener('click', () => {
     playSound(elements.audioButtonClick);
     leaveRoom();

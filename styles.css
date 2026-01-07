@@ -595,6 +595,19 @@ input[type="text"]::placeholder {
         0 30px 80px var(--color-shadow),
         inset 0 10px 30px rgba(0, 0, 0, 0.5);
     animation: tableAppear 0.8s ease;
+    cursor: pointer;
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.poker-table:hover {
+    box-shadow:
+        0 0 0 5px var(--color-amber),
+        0 0 20px rgba(255, 215, 0, 0.2),
+        0 40px 100px var(--color-shadow);
+}
+
+.poker-table:active {
+    transform: scale(0.99);
 }
 
 @keyframes tableAppear {
