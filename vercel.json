@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "name": "liars-gun",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/$1" }
+  ]
+}

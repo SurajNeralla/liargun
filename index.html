@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liar's Gun - Bluffing Card Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen active">
+        <div class="bar-background"></div>
+        <div class="bar-overlay"></div>
+
+        <div class="lobby-container">
+            <h1 class="game-title">
+                <span class="title-main">Liar's Gun</span>
+                <span class="title-subtitle">A Game of Deception</span>
+            </h1>
+
+            <div class="lobby-content">
+                <!-- Player Name Input -->
+                <div class="input-section">
+                    <label for="player-name">Your Name</label>
+                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="15">
+                </div>
+
+                <!-- Room Actions -->
+                <div class="room-actions">
+                    <button id="create-room-btn" class="btn btn-primary">
+                        <span class="btn-icon">🎲</span>
+                        Create Room
+                    </button>
+                    <div class="divider">
+                        <span>OR</span>
+                    </div>
+                    <div class="join-room-section">
+                        <input type="text" id="room-code-input" placeholder="Enter Room Code" maxlength="6">
+                        <button id="join-room-btn" class="btn btn-secondary">
+                            <span class="btn-icon">🚪</span>
+                            Join Room
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Room Info (Hidden initially) -->
+                <div id="room-info" class="room-info hidden">
+                    <div class="room-code-display">
+                        <span class="label">Room Code:</span>
+                        <span id="display-room-code" class="code">------</span>
+                        <button id="copy-code-btn" class="copy-btn" title="Copy code">📋</button>
+                    </div>
+
+                    <div class="players-list">
+                        <h3>Players <span id="player-count">(0/4)</span></h3>
+                        <div id="players-container"></div>
+                    </div>
+
+                    <div class="room-controls">
+                        <button id="start-game-btn" class="btn btn-success hidden">
+                            <span class="btn-icon">▶</span>
+                            Start Game
+                        </button>
+                        <button id="leave-room-btn" class="btn btn-danger">
+                            <span class="btn-icon">🚪</span>
+                            Leave Room
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="bar-background game-bg"></div>
+        <div class="bar-overlay"></div>
+
+        <!-- Round Table -->
+        <div class="table-container">
+            <div class="poker-table">
+                <div class="table-center">
+                    <div id="round-info" class="round-info">
+                        <div class="round-type">King's Table</div>
+                        <div class="round-number">Round 1</div>
+                    </div>
+                </div>
+
+                <!-- Player Seats (dynamically positioned) -->
+                <div id="player-seats" class="player-seats"></div>
+            </div>
+        </div>
+
+        <!-- Current Player's Cards -->
+        <div id="player-hand" class="player-hand">
+            <div class="hand-title">Your Cards</div>
+            <div id="cards-container" class="cards-container"></div>
+        </div>
+
+        <!-- Game Actions -->
+        <div id="game-actions" class="game-actions hidden">
+            <button id="claim-card-btn" class="btn btn-primary">
+                <span class="btn-icon">🃏</span>
+                I Have the Card
+            </button>
+            <button id="call-bluff-btn" class="btn btn-danger">
+                <span class="btn-icon">⚠️</span>
+                Call Bluff!
+            </button>
+        </div>
+
+        <!-- Turn Indicator -->
+        <div id="turn-indicator" class="turn-indicator hidden">
+            <span id="turn-text">Waiting for players...</span>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen">
+        <div class="bar-background"></div>
+        <div class="bar-overlay"></div>
+
+        <div class="game-over-container">
+            <h1 class="game-over-title">Game Over</h1>
+            <div id="winner-display" class="winner-display">
+                <div class="trophy-icon">🏆</div>
+                <div class="winner-name">Player Name</div>
+                <div class="winner-subtitle">Wins!</div>
+            </div>
+            <button id="back-to-lobby-btn" class="btn btn-primary">
+                <span class="btn-icon">🏠</span>
+                Back to Lobby
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Overlays -->
+    <div id="roulette-modal" class="modal">
+        <div class="modal-content roulette-content">
+            <div class="roulette-scene">
+                <div id="gun-container" class="gun-container">
+                    <div class="gun">🔫</div>
+                </div>
+                <div id="roulette-message" class="roulette-message">
+                    <span id="roulette-player-name">Player</span> was caught bluffing!
+                </div>
+                <div id="roulette-result" class="roulette-result hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification" class="notification hidden">
+        <span id="notification-text"></span>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="audio-bar-ambience" loop>
+        <source src="sounds/bar-ambience.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-card-shuffle">
+        <source src="sounds/card-shuffle.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-card-flip">
+        <source src="sounds/card-flip.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-bluff-call">
+        <source src="sounds/bluff-call.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-gun-shot">
+        <source src="sounds/gun-shot.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-gun-click">
+        <source src="sounds/gun-click.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-button-click">
+        <source src="sounds/button-click.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-player-join">
+        <source src="sounds/player-join.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audio-game-start">
+        <source src="sounds/game-start.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <!-- Game Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>
